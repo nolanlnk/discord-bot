@@ -1,0 +1,13 @@
+{
+  "name": "discord-logger-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord de logging ultra-complet",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node --watch bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.18.0"
+  }
+}

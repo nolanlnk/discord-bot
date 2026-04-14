@@ -1,0 +1,25 @@
+# ─── TOKEN DU BOT ─────────────────────────────────────────────────────────────
+DISCORD_TOKEN=ton_token_discord_ici
+
+# ─── CHANNEL DE LOG PAR DÉFAUT ────────────────────────────────────────────────
+# Tous les logs vont ici si aucun channel spécifique n'est défini
+LOG_CHANNEL_ID=123456789012345678
+
+# ─── CHANNELS SPÉCIFIQUES (optionnel) ─────────────────────────────────────────
+# Décommente et renseigne les IDs pour séparer les catégories de logs
+
+# LOG_MESSAGES_CHANNEL=123456789012345678   # Suppression / modification de messages
+# LOG_MEMBERS_CHANNEL=123456789012345678    # Arrivées / départs / profil
+# LOG_MODERATION_CHANNEL=123456789012345678 # Bans / kicks / timeouts
+# LOG_SERVER_CHANNEL=123456789012345678     # Paramètres du serveur
+# LOG_VOICE_CHANNEL=123456789012345678      # Activité vocale
+# LOG_ROLES_CHANNEL=123456789012345678      # Création / suppression / modification de rôles
+# LOG_CHANNELS_CHANNEL=123456789012345678   # Salons créés / supprimés / modifiés
+# LOG_INVITES_CHANNEL=123456789012345678    # Invitations
+# LOG_REACTIONS_CHANNEL=123456789012345678  # Réactions aux messages
+# LOG_THREADS_CHANNEL=123456789012345678    # Threads
+# LOG_EMOJIS_CHANNEL=123456789012345678     # Emojis & stickers
+# LOG_AUTOMOD_CHANNEL=123456789012345678    # AutoModération
+# LOG_WEBHOOKS_CHANNEL=123456789012345678   # Webhooks
+# LOG_EVENTS_CHANNEL=123456789012345678     # Événements planifiés
+# LOG_STAGE_CHANNEL=123456789012345678      # Stages
