@@ -592,7 +592,11 @@ client.on('voiceStateUpdate', async (before, after) => {
 
       const entry = audit.entries.first();
 
-      if (entry && entry.target.id === member.id) {
+      if (
+  entry &&
+  entry.target.id === member.id &&
+  Date.now() - entry.createdTimestamp < 5000)
+ {
         executor = entry.executor;
       }
     } catch {}
