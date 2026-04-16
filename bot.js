@@ -26,7 +26,6 @@ const client = new Client({
 const TOKEN = process.env.DISCORD_TOKEN || 'TON_TOKEN_ICI';
 const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID || 'ID_DU_SALON_LOG';
 
-// Tu peux séparer les logs par catégorie en définissant des channels différents
 const CHANNELS = {
   messages:  process.env.LOG_MESSAGES_CHANNEL  || LOG_CHANNEL_ID,
   members:   process.env.LOG_MEMBERS_CHANNEL   || LOG_CHANNEL_ID,
@@ -45,7 +44,6 @@ const CHANNELS = {
   stage:     process.env.LOG_STAGE_CHANNEL     || LOG_CHANNEL_ID,
 };
 
-// ─── COULEURS PAR CATÉGORIE ───────────────────────────────────────────────────
 const COLORS = {
   green:  0x2ECC71,
   red:    0xE74C3C,
@@ -59,7 +57,6 @@ const COLORS = {
   dark:   0x2C3E50,
 };
 
-// ─── HELPER : envoyer un embed dans le bon channel ────────────────────────────
 async function sendLog(categoryKey, embed) {
   try {
     const channelId = CHANNELS[categoryKey] || LOG_CHANNEL_ID;
@@ -90,7 +87,6 @@ function diff(before, after, keys) {
   return fields;
 }
 
-// ─── READY ────────────────────────────────────────────────────────────────────
 client.on('ready', () => {
   console.log(`✅ Logger connecté en tant que ${client.user.tag}`);
   console.log(`📋 Surveillance de ${client.guilds.cache.size} serveur(s)`);
@@ -228,7 +224,6 @@ client.on('guildMemberRemove', async (member) => {
 });
 
 client.on('guildMemberUpdate', async (before, after) => {
-  // Pseudo changé
   if (before.nickname !== after.nickname) {
     const embed = new EmbedBuilder()
       .setTitle('📝 Pseudo modifié')
@@ -242,7 +237,6 @@ client.on('guildMemberUpdate', async (before, after) => {
     await sendLog('members', embed);
   }
 
-  // Rôles ajoutés / retirés
   const addedRoles   = after.roles.cache.filter(r => !before.roles.cache.has(r.id));
   const removedRoles = before.roles.cache.filter(r => !after.roles.cache.has(r.id));
 
@@ -270,7 +264,6 @@ client.on('guildMemberUpdate', async (before, after) => {
     await sendLog('roles', embed);
   }
 
-  // Timeout
   if (!before.communicationDisabledUntil && after.communicationDisabledUntil) {
     const embed = new EmbedBuilder()
       .setTitle('🔇 Membre mis en timeout')
@@ -292,7 +285,6 @@ client.on('guildMemberUpdate', async (before, after) => {
     await sendLog('moderation', embed);
   }
 
-  // Avatar serveur changé
   if (before.avatar !== after.avatar) {
     const embed = new EmbedBuilder()
       .setTitle('🖼️ Avatar serveur changé')
@@ -352,188 +344,65 @@ client.on('guildBanRemove', async (ban) => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  RÔLES
-// ══════════════════════════════════════════════════════════════════════════════
-
-client.on('roleCreate', async (role) => {
-  const embed = new EmbedBuilder()
-    .setTitle('✨ Rôle créé')
-    .setColor(role.color || COLORS.green)
-    .addFields(
-      { name: '🏷️ Nom',        value: role.name, inline: true },
-      { name: '🆔 ID',          value: role.id, inline: true },
-      { name: '🎨 Couleur',     value: role.hexColor, inline: true },
-      { name: '📌 Mentionnable', value: role.mentionable ? '✅' : '❌', inline: true },
-      { name: '🔍 Affiché séparément', value: role.hoist ? '✅' : '❌', inline: true },
-    )
-    .setTimestamp();
-  await sendLog('roles', embed);
-});
-
-client.on('roleDelete', async (role) => {
-  const embed = new EmbedBuilder()
-    .setTitle('🗑️ Rôle supprimé')
-    .setColor(COLORS.red)
-    .addFields(
-      { name: '🏷️ Nom', value: role.name, inline: true },
-      { name: '🆔 ID',  value: role.id, inline: true },
-    )
-    .setTimestamp();
-  await sendLog('roles', embed);
-});
-
-client.on('roleUpdate', async (before, after) => {
-  const fields = diff(before, after, ['name', 'color', 'hoist', 'mentionable', 'position']);
-  if (fields.length === 0) return;
-  const embed = new EmbedBuilder()
-    .setTitle('🔄 Rôle modifié')
-    .setColor(COLORS.orange)
-    .addFields(
-      { name: '🏷️ Rôle', value: `${after} (${after.name})`, inline: true },
-      { name: '🆔 ID',   value: after.id, inline: true },
-      ...fields,
-    )
-    .setTimestamp();
-  await sendLog('roles', embed);
-});
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  SALONS
-// ══════════════════════════════════════════════════════════════════════════════
-
-client.on('channelCreate', async (channel) => {
-  if (!channel.guild) return;
-  const embed = new EmbedBuilder()
-    .setTitle('📢 Salon créé')
-    .setColor(COLORS.green)
-    .addFields(
-      { name: '📌 Nom',      value: channel.name, inline: true },
-      { name: '🆔 ID',       value: channel.id, inline: true },
-      { name: '📂 Type',     value: channel.type.toString(), inline: true },
-      { name: '📁 Catégorie', value: channel.parent?.name || '*Aucune*', inline: true },
-    )
-    .setTimestamp();
-  await sendLog('channels', embed);
-});
-
-client.on('channelDelete', async (channel) => {
-  if (!channel.guild) return;
-  const embed = new EmbedBuilder()
-    .setTitle('🗑️ Salon supprimé')
-    .setColor(COLORS.red)
-    .addFields(
-      { name: '📌 Nom',      value: channel.name, inline: true },
-      { name: '🆔 ID',       value: channel.id, inline: true },
-      { name: '📁 Catégorie', value: channel.parent?.name || '*Aucune*', inline: true },
-    )
-    .setTimestamp();
-  await sendLog('channels', embed);
-});
-
-client.on('channelUpdate', async (before, after) => {
-  if (!after.guild) return;
-  const fields = diff(before, after, ['name', 'topic', 'nsfw', 'rateLimitPerUser', 'position', 'parentId', 'userLimit', 'bitrate']);
-  if (fields.length === 0) return;
-  const embed = new EmbedBuilder()
-    .setTitle('🔄 Salon modifié')
-    .setColor(COLORS.orange)
-    .addFields(
-      { name: '📌 Salon', value: `${after}`, inline: true },
-      { name: '🆔 ID',    value: after.id, inline: true },
-      ...fields,
-    )
-    .setTimestamp();
-  await sendLog('channels', embed);
-});
-
-client.on('channelPinsUpdate', async (channel, time) => {
-  const embed = new EmbedBuilder()
-    .setTitle('📌 Messages épinglés mis à jour')
-    .setColor(COLORS.yellow)
-    .addFields(
-      { name: '📌 Salon', value: `${channel}`, inline: true },
-      { name: '🕐 À',     value: ts(time), inline: true },
-    )
-    .setTimestamp();
-  await sendLog('channels', embed);
-});
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  THREADS
-// ══════════════════════════════════════════════════════════════════════════════
-
-client.on('threadCreate', async (thread, newlyCreated) => {
-  const embed = new EmbedBuilder()
-    .setTitle('🧵 Thread créé')
-    .setColor(COLORS.teal)
-    .addFields(
-      { name: '🧵 Nom',         value: thread.name, inline: true },
-      { name: '🆔 ID',          value: thread.id, inline: true },
-      { name: '📌 Salon parent', value: `${thread.parent}`, inline: true },
-      { name: '⏱️ Archive dans', value: `${thread.autoArchiveDuration} min`, inline: true },
-    )
-    .setTimestamp();
-  await sendLog('threads', embed);
-});
-
-client.on('threadDelete', async (thread) => {
-  const embed = new EmbedBuilder()
-    .setTitle('🗑️ Thread supprimé')
-    .setColor(COLORS.red)
-    .addFields(
-      { name: '🧵 Nom', value: thread.name, inline: true },
-      { name: '🆔 ID',  value: thread.id, inline: true },
-    )
-    .setTimestamp();
-  await sendLog('threads', embed);
-});
-
-client.on('threadUpdate', async (before, after) => {
-  const fields = diff(before, after, ['name', 'archived', 'locked', 'autoArchiveDuration']);
-  if (fields.length === 0) return;
-  const embed = new EmbedBuilder()
-    .setTitle('🔄 Thread modifié')
-    .setColor(COLORS.orange)
-    .addFields(
-      { name: '🧵 Thread', value: after.name, inline: true },
-      ...fields,
-    )
-    .setTimestamp();
-  await sendLog('threads', embed);
-});
-
-client.on('threadMembersUpdate', async (addedMembers, removedMembers, thread) => {
-  if (addedMembers.size > 0) {
-    const embed = new EmbedBuilder()
-      .setTitle('➕ Membres ajoutés au thread')
-      .setColor(COLORS.green)
-      .addFields(
-        { name: '🧵 Thread',  value: thread.name, inline: true },
-        { name: '👥 Membres', value: addedMembers.map(m => `<@${m.id}>`).join(', ').slice(0, 1024) },
-      )
-      .setTimestamp();
-    await sendLog('threads', embed);
-  }
-  if (removedMembers.size > 0) {
-    const embed = new EmbedBuilder()
-      .setTitle('➖ Membres retirés du thread')
-      .setColor(COLORS.red)
-      .addFields(
-        { name: '🧵 Thread',  value: thread.name, inline: true },
-        { name: '👥 Membres', value: removedMembers.map(m => `<@${m.id}>`).join(', ').slice(0, 1024) },
-      )
-      .setTimestamp();
-    await sendLog('threads', embed);
-  }
-});
-
-// ══════════════════════════════════════════════════════════════════════════════
 //  VOCAL
 // ══════════════════════════════════════════════════════════════════════════════
 
 client.on('voiceStateUpdate', async (before, after) => {
   const member = after.member || before.member;
   if (!member) return;
+
+  // --- NOUVEAU : Détection des déconnexions forcées ---
+  if (before.channelId && !after.channelId) {
+    try {
+      const auditLogs = await after.guild.fetchAuditLogs({
+        type: AuditLogEvent.MemberDisconnect,
+        limit: 1,
+      });
+      const entry = auditLogs.entries.first();
+      if (entry && entry.target.id === member.id && entry.createdTimestamp > Date.now() - 5000) {
+        const embed = new EmbedBuilder()
+          .setTitle('🔇 Membre déconnecté de force')
+          .setColor(COLORS.red)
+          .addFields(
+            { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
+            { name: '📢 Salon', value: `${before.channel}`, inline: true },
+            { name: '🛡️ Modérateur', value: `${entry.executor.tag}`, inline: true },
+          )
+          .setTimestamp();
+        await sendLog('voice', embed);
+        return;
+      }
+    } catch (err) {
+      console.error('Erreur audit log disconnect:', err);
+    }
+  }
+
+  // --- NOUVEAU : Détection des déplacements forcés ---
+  if (before.channelId && after.channelId && before.channelId !== after.channelId) {
+    try {
+      const auditLogs = await after.guild.fetchAuditLogs({
+        type: AuditLogEvent.MemberMove,
+        limit: 1,
+      });
+      const entry = auditLogs.entries.first();
+      if (entry && entry.target.id === member.id && entry.createdTimestamp > Date.now() - 5000) {
+        const embed = new EmbedBuilder()
+          .setTitle('🔀 Membre déplacé de force')
+          .setColor(COLORS.orange)
+          .addFields(
+            { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
+            { name: '⬅️ Avant', value: `${before.channel}`, inline: true },
+            { name: '➡️ Après', value: `${after.channel}`, inline: true },
+            { name: '🛡️ Modérateur', value: `${entry.executor.tag}`, inline: true },
+          )
+          .setTimestamp();
+        await sendLog('voice', embed);
+        return;
+      }
+    } catch (err) {
+      console.error('Erreur audit log move:', err);
+    }
+  }
 
   // Rejoint un vocal
   if (!before.channelId && after.channelId) {
@@ -548,59 +417,21 @@ client.on('voiceStateUpdate', async (before, after) => {
     return sendLog('voice', embed);
   }
 
-  // Quitté le vocal (ou déconnecté)
+  // Quitté le vocal (volontairement)
   if (before.channelId && !after.channelId) {
-
-    let executor = null;
-
-    try {
-      const audit = await after.guild.fetchAuditLogs({
-        type: AuditLogEvent.MemberDisconnect,
-        limit: 1
-      });
-
-      const entry = audit.entries.first();
-
-      if (entry && entry.target.id === member.id) {
-        executor = entry.executor;
-      }
-    } catch {}
-
     const embed = new EmbedBuilder()
       .setTitle('🔇 Quitté le vocal')
       .setColor(COLORS.red)
       .addFields(
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
         { name: '📢 Salon',  value: `${before.channel}`, inline: true },
-        { name: '🛡️ Action par', value: executor ? `${executor.tag}` : '*Lui-même*', inline: true },
       )
       .setTimestamp();
-
     return sendLog('voice', embed);
   }
 
-  // Changé de salon vocal (ou déplacé)
+  // Changé de salon vocal (volontairement)
   if (before.channelId !== after.channelId) {
-
-    let executor = null;
-
-    try {
-      const audit = await after.guild.fetchAuditLogs({
-        type: AuditLogEvent.MemberMove,
-        limit: 1
-      });
-
-      const entry = audit.entries.first();
-
-      if (
-  entry &&
-  entry.target.id === member.id &&
-  Date.now() - entry.createdTimestamp < 5000)
- {
-        executor = entry.executor;
-      }
-    } catch {}
-
     const embed = new EmbedBuilder()
       .setTitle('🔀 Changé de salon vocal')
       .setColor(COLORS.orange)
@@ -608,10 +439,8 @@ client.on('voiceStateUpdate', async (before, after) => {
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
         { name: '⬅️ Avant',  value: `${before.channel}`, inline: true },
         { name: '➡️ Après',  value: `${after.channel}`, inline: true },
-        { name: '🛡️ Déplacé par', value: executor ? `${executor.tag}` : '*Lui-même*', inline: true },
       )
       .setTimestamp();
-
     return sendLog('voice', embed);
   }
 
