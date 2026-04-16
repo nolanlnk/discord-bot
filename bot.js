@@ -548,21 +548,55 @@ client.on('voiceStateUpdate', async (before, after) => {
     return sendLog('voice', embed);
   }
 
-  // Quitté le vocal
+  // Quitté le vocal (ou déconnecté)
   if (before.channelId && !after.channelId) {
+
+    let executor = null;
+
+    try {
+      const audit = await after.guild.fetchAuditLogs({
+        type: AuditLogEvent.MemberDisconnect,
+        limit: 1
+      });
+
+      const entry = audit.entries.first();
+
+      if (entry && entry.target.id === member.id) {
+        executor = entry.executor;
+      }
+    } catch {}
+
     const embed = new EmbedBuilder()
       .setTitle('🔇 Quitté le vocal')
       .setColor(COLORS.red)
       .addFields(
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
         { name: '📢 Salon',  value: `${before.channel}`, inline: true },
+        { name: '🛡️ Action par', value: executor ? `${executor.tag}` : '*Lui-même*', inline: true },
       )
       .setTimestamp();
+
     return sendLog('voice', embed);
   }
 
-  // Changé de salon vocal
+  // Changé de salon vocal (ou déplacé)
   if (before.channelId !== after.channelId) {
+
+    let executor = null;
+
+    try {
+      const audit = await after.guild.fetchAuditLogs({
+        type: AuditLogEvent.MemberMove,
+        limit: 1
+      });
+
+      const entry = audit.entries.first();
+
+      if (entry && entry.target.id === member.id) {
+        executor = entry.executor;
+      }
+    } catch {}
+
     const embed = new EmbedBuilder()
       .setTitle('🔀 Changé de salon vocal')
       .setColor(COLORS.orange)
@@ -570,8 +604,10 @@ client.on('voiceStateUpdate', async (before, after) => {
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
         { name: '⬅️ Avant',  value: `${before.channel}`, inline: true },
         { name: '➡️ Après',  value: `${after.channel}`, inline: true },
+        { name: '🛡️ Déplacé par', value: executor ? `${executor.tag}` : '*Lui-même*', inline: true },
       )
       .setTimestamp();
+
     return sendLog('voice', embed);
   }
 
