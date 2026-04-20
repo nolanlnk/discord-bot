@@ -550,6 +550,9 @@ client.on('voiceStateUpdate', async (before, after) => {
 
   // Quitté le vocal
   if (before.channelId && !after.channelId) {
+    // Petit délai pour laisser à Discord le temps d'écrire l'Audit Log
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     let executor = null;
     try {
       const fetchedLogs = await member.guild.fetchAuditLogs({
@@ -557,17 +560,21 @@ client.on('voiceStateUpdate', async (before, after) => {
         type: AuditLogEvent.MemberDisconnect,
       });
       const disconnectLog = fetchedLogs.entries.first();
-      if (disconnectLog && disconnectLog.target.id === member.id && (Date.now() - disconnectLog.createdTimestamp) < 5000) {
+      
+      // On vérifie que le log correspond au membre et qu'il est récent (moins de 10 secondes)
+      if (disconnectLog && disconnectLog.target.id === member.id && (Date.now() - disconnectLog.createdTimestamp) < 10000) {
         executor = disconnectLog.executor;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Erreur fetchAuditLogs (Disconnect):", e);
+    }
 
     const embed = new EmbedBuilder()
-      .setTitle(executor ? '🚫 Déconnecté du vocal' : '🔇 Quitté le vocal')
-      .setColor(executor ? COLORS.red : COLORS.gray)
+      .setTitle(executor ? '🚫 Expulsé du vocal' : '🔇 Quitté le vocal')
+      .setColor(executor ? COLORS.red : 0x7289DA) // Bleu Discord si départ volontaire
       .addFields(
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
-        { name: '📢 Salon',  value: `${before.channel}`, inline: true },
+        { name: '📢 Salon',  value: `${before.channel.name}`, inline: true },
       )
       .setTimestamp();
 
@@ -580,6 +587,9 @@ client.on('voiceStateUpdate', async (before, after) => {
 
   // Changé de salon vocal
   if (before.channelId !== after.channelId) {
+    // Petit délai pour l'Audit Log
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     let executor = null;
     try {
       const fetchedLogs = await member.guild.fetchAuditLogs({
@@ -587,18 +597,21 @@ client.on('voiceStateUpdate', async (before, after) => {
         type: AuditLogEvent.MemberMove,
       });
       const moveLog = fetchedLogs.entries.first();
-      if (moveLog && moveLog.target.id === member.id && (Date.now() - moveLog.createdTimestamp) < 5000) {
+      
+      if (moveLog && moveLog.target.id === member.id && (Date.now() - moveLog.createdTimestamp) < 10000) {
         executor = moveLog.executor;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Erreur fetchAuditLogs (Move):", e);
+    }
 
     const embed = new EmbedBuilder()
-      .setTitle(executor ? '🔀 Déplacé de salon vocal' : '🔀 Changé de salon vocal')
+      .setTitle(executor ? '🔀 Déplacé par un modérateur' : '🔀 Changé de salon vocal')
       .setColor(executor ? COLORS.purple : COLORS.orange)
       .addFields(
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
-        { name: '⬅️ Avant',  value: `${before.channel}`, inline: true },
-        { name: '➡️ Après',  value: `${after.channel}`, inline: true },
+        { name: '⬅️ Avant',  value: `${before.channel.name}`, inline: true },
+        { name: '➡️ Après',  value: `${after.channel.name}`, inline: true },
       )
       .setTimestamp();
 
