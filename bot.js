@@ -90,20 +90,6 @@ function diff(before, after, keys) {
   return fields;
 }
 
-// ─── HELPER : récupérer le modérateur depuis les audit logs vocal ─────────────
-async function getVoiceAuditExecutor(guild, targetId, auditType) {
-  try {
-    const audit = await guild.fetchAuditLogs({ type: auditType, limit: 5 });
-    const entry = audit.entries.find(e =>
-      e.target?.id === targetId &&
-      (Date.now() - e.createdTimestamp) < 5000 // moins de 5 secondes
-    );
-    return entry?.executor ?? null;
-  } catch {
-    return null;
-  }
-}
-
 // ─── READY ────────────────────────────────────────────────────────────────────
 client.on('ready', () => {
   console.log(`✅ Logger connecté en tant que ${client.user.tag}`);
@@ -564,10 +550,20 @@ client.on('voiceStateUpdate', async (before, after) => {
 
   // Quitté le vocal
   if (before.channelId && !after.channelId) {
-    // Vérifier si c'est une déconnexion forcée par un modérateur via audit logs
-    const executor = await getVoiceAuditExecutor(member.guild, member.id, AuditLogEvent.MemberDisconnect);
+    let executor = null;
+    try {
+      const fetchedLogs = await member.guild.fetchAuditLogs({
+        limit: 1,
+        type: AuditLogEvent.MemberDisconnect,
+      });
+      const disconnectLog = fetchedLogs.entries.first();
+      if (disconnectLog && disconnectLog.target.id === member.id && (Date.now() - disconnectLog.createdTimestamp) < 5000) {
+        executor = disconnectLog.executor;
+      }
+    } catch (e) {}
 
     const embed = new EmbedBuilder()
+      .setTitle(executor ? '🚫 Déconnecté du vocal' : '🔇 Quitté le vocal')
       .setColor(executor ? COLORS.red : COLORS.gray)
       .addFields(
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
@@ -576,10 +572,7 @@ client.on('voiceStateUpdate', async (before, after) => {
       .setTimestamp();
 
     if (executor) {
-      embed.setTitle('🚫 Membre déconnecté du vocal (forcé)');
-      embed.addFields({ name: '🛡️ Déconnecté par', value: `${executor} (${executor.tag})`, inline: true });
-    } else {
-      embed.setTitle('🔇 Quitté le vocal');
+      embed.addFields({ name: '🛡️ Modérateur', value: `${executor} (${executor.tag})`, inline: true });
     }
 
     return sendLog('voice', embed);
@@ -587,10 +580,20 @@ client.on('voiceStateUpdate', async (before, after) => {
 
   // Changé de salon vocal
   if (before.channelId !== after.channelId) {
-    // Vérifier si c'est un déplacement forcé par un modérateur via audit logs
-    const executor = await getVoiceAuditExecutor(member.guild, member.id, AuditLogEvent.MemberMove);
+    let executor = null;
+    try {
+      const fetchedLogs = await member.guild.fetchAuditLogs({
+        limit: 1,
+        type: AuditLogEvent.MemberMove,
+      });
+      const moveLog = fetchedLogs.entries.first();
+      if (moveLog && moveLog.target.id === member.id && (Date.now() - moveLog.createdTimestamp) < 5000) {
+        executor = moveLog.executor;
+      }
+    } catch (e) {}
 
     const embed = new EmbedBuilder()
+      .setTitle(executor ? '🔀 Déplacé de salon vocal' : '🔀 Changé de salon vocal')
       .setColor(executor ? COLORS.purple : COLORS.orange)
       .addFields(
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
@@ -600,10 +603,7 @@ client.on('voiceStateUpdate', async (before, after) => {
       .setTimestamp();
 
     if (executor) {
-      embed.setTitle('🔀 Membre déplacé de salon vocal (forcé)');
-      embed.addFields({ name: '🛡️ Déplacé par', value: `${executor} (${executor.tag})`, inline: true });
-    } else {
-      embed.setTitle('🔀 Changé de salon vocal');
+      embed.addFields({ name: '🛡️ Modérateur', value: `${executor} (${executor.tag})`, inline: true });
     }
 
     return sendLog('voice', embed);
