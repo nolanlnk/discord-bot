@@ -556,13 +556,17 @@ client.on('voiceStateUpdate', async (before, after) => {
     let executor = null;
     try {
       const fetchedLogs = await member.guild.fetchAuditLogs({
-        limit: 1,
+        limit: 5, // On en prend 5 pour être sûr de trouver le bon
         type: AuditLogEvent.MemberDisconnect,
       });
-      const disconnectLog = fetchedLogs.entries.first();
       
-      // On vérifie que le log correspond au membre et qu'il est récent (moins de 10 secondes)
-      if (disconnectLog && disconnectLog.target.id === member.id && (Date.now() - disconnectLog.createdTimestamp) < 10000) {
+      const disconnectLog = fetchedLogs.entries.find(entry => 
+        entry.target && 
+        entry.target.id === member.id && 
+        (Date.now() - entry.createdTimestamp) < 10000
+      );
+
+      if (disconnectLog) {
         executor = disconnectLog.executor;
       }
     } catch (e) {
@@ -593,12 +597,17 @@ client.on('voiceStateUpdate', async (before, after) => {
     let executor = null;
     try {
       const fetchedLogs = await member.guild.fetchAuditLogs({
-        limit: 1,
+        limit: 5,
         type: AuditLogEvent.MemberMove,
       });
-      const moveLog = fetchedLogs.entries.first();
       
-      if (moveLog && moveLog.target.id === member.id && (Date.now() - moveLog.createdTimestamp) < 10000) {
+      const moveLog = fetchedLogs.entries.find(entry => 
+        entry.target && 
+        entry.target.id === member.id && 
+        (Date.now() - entry.createdTimestamp) < 10000
+      );
+
+      if (moveLog) {
         executor = moveLog.executor;
       }
     } catch (e) {
