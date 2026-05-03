@@ -26,7 +26,6 @@ const client = new Client({
 const TOKEN = process.env.DISCORD_TOKEN || 'TON_TOKEN_ICI';
 const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID || 'ID_DU_SALON_LOG';
 
-// Tu peux séparer les logs par catégorie en définissant des channels différents
 const CHANNELS = {
   messages:  process.env.LOG_MESSAGES_CHANNEL  || LOG_CHANNEL_ID,
   members:   process.env.LOG_MEMBERS_CHANNEL   || LOG_CHANNEL_ID,
@@ -91,7 +90,8 @@ function diff(before, after, keys) {
 }
 
 // ─── READY ────────────────────────────────────────────────────────────────────
-client.on('ready', () => {
+// Changé 'ready' en 'clientReady' pour éviter le DeprecationWarning
+client.on('clientReady', () => {
   console.log(`✅ Logger connecté en tant que ${client.user.tag}`);
   console.log(`📋 Surveillance de ${client.guilds.cache.size} serveur(s)`);
 });
@@ -201,11 +201,11 @@ client.on('guildMemberAdd', async (member) => {
     .setColor(COLORS.green)
     .setThumbnail(member.user.displayAvatarURL())
     .addFields(
-      { name: '👤 Membre',           value: `${member} (${member.user.tag})`, inline: true },
-      { name: '🆔 ID',               value: member.id, inline: true },
+      { name: '👤 Membre',            value: `${member} (${member.user.tag})`, inline: true },
+      { name: '🆔 ID',                value: member.id, inline: true },
       { name: '📅 Compte créé',      value: ts(member.user.createdAt), inline: false },
       { name: '📊 Âge du compte',    value: `${accountAge} jours`, inline: true },
-      { name: '🔢 Membre #',         value: `${member.guild.memberCount}`, inline: true },
+      { name: '🔢 Membre #',          value: `${member.guild.memberCount}`, inline: true },
     )
     .setTimestamp();
   await sendLog('members', embed);
@@ -409,7 +409,7 @@ client.on('channelCreate', async (channel) => {
     .addFields(
       { name: '📌 Nom',      value: channel.name, inline: true },
       { name: '🆔 ID',       value: channel.id, inline: true },
-      { name: '📂 Type',     value: channel.type.toString(), inline: true },
+      { name: '📂 Type',     value: channel.type?.toString() || 'Inconnu', inline: true },
       { name: '📁 Catégorie', value: channel.parent?.name || '*Aucune*', inline: true },
     )
     .setTimestamp();
@@ -462,12 +462,12 @@ client.on('channelPinsUpdate', async (channel, time) => {
 //  THREADS
 // ══════════════════════════════════════════════════════════════════════════════
 
-client.on('threadCreate', async (thread, newlyCreated) => {
+client.on('threadCreate', async (thread) => {
   const embed = new EmbedBuilder()
     .setTitle('🧵 Thread créé')
     .setColor(COLORS.teal)
     .addFields(
-      { name: '🧵 Nom',         value: thread.name, inline: true },
+      { name: '🧵 Nom',          value: thread.name, inline: true },
       { name: '🆔 ID',          value: thread.id, inline: true },
       { name: '📌 Salon parent', value: `${thread.parent}`, inline: true },
       { name: '⏱️ Archive dans', value: `${thread.autoArchiveDuration} min`, inline: true },
@@ -550,13 +550,12 @@ client.on('voiceStateUpdate', async (before, after) => {
 
   // Quitté le vocal
   if (before.channelId && !after.channelId) {
-    // Petit délai pour laisser à Discord le temps d'écrire l'Audit Log
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     let executor = null;
     try {
       const fetchedLogs = await member.guild.fetchAuditLogs({
-        limit: 5, // On en prend 5 pour être sûr de trouver le bon
+        limit: 5,
         type: AuditLogEvent.MemberDisconnect,
       });
       
@@ -575,10 +574,10 @@ client.on('voiceStateUpdate', async (before, after) => {
 
     const embed = new EmbedBuilder()
       .setTitle(executor ? '🚫 Expulsé du vocal' : '🔇 Quitté le vocal')
-      .setColor(executor ? COLORS.red : 0x7289DA) // Bleu Discord si départ volontaire
+      .setColor(executor ? COLORS.red : 0x7289DA) 
       .addFields(
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
-        { name: '📢 Salon',  value: `${before.channel.name}`, inline: true },
+        { name: '📢 Salon',  value: `${before.channel?.name || "Inconnu"}`, inline: true },
       )
       .setTimestamp();
 
@@ -591,7 +590,6 @@ client.on('voiceStateUpdate', async (before, after) => {
 
   // Changé de salon vocal
   if (before.channelId !== after.channelId) {
-    // Petit délai pour l'Audit Log
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     let executor = null;
@@ -619,8 +617,8 @@ client.on('voiceStateUpdate', async (before, after) => {
       .setColor(executor ? COLORS.purple : COLORS.orange)
       .addFields(
         { name: '👤 Membre', value: `${member} (${member.user.tag})`, inline: true },
-        { name: '⬅️ Avant',  value: `${before.channel.name}`, inline: true },
-        { name: '➡️ Après',  value: `${after.channel.name}`, inline: true },
+        { name: '⬅️ Avant',  value: `${before.channel?.name || "Inconnu"}`, inline: true },
+        { name: '➡️ Après',  value: `${after.channel?.name || "Inconnu"}`, inline: true },
       )
       .setTimestamp();
 
@@ -633,8 +631,8 @@ client.on('voiceStateUpdate', async (before, after) => {
 
   // Changements d'état vocal
   const changes = [];
-  if (before.mute !== after.mute)        changes.push(`Mute serveur: ${after.mute ? '🔴 ON' : '🟢 OFF'}`);
-  if (before.deaf !== after.deaf)        changes.push(`Sourd serveur: ${after.deaf ? '🔴 ON' : '🟢 OFF'}`);
+  if (before.mute !== after.mute)         changes.push(`Mute serveur: ${after.mute ? '🔴 ON' : '🟢 OFF'}`);
+  if (before.deaf !== after.deaf)         changes.push(`Sourd serveur: ${after.deaf ? '🔴 ON' : '🟢 OFF'}`);
   if (before.selfMute !== after.selfMute) changes.push(`Mute personnel: ${after.selfMute ? '🔴 ON' : '🟢 OFF'}`);
   if (before.selfDeaf !== after.selfDeaf) changes.push(`Sourd perso: ${after.selfDeaf ? '🔴 ON' : '🟢 OFF'}`);
   if (before.selfVideo !== after.selfVideo) changes.push(`Caméra: ${after.selfVideo ? '📷 ON' : '📷 OFF'}`);
@@ -765,8 +763,8 @@ client.on('stickerCreate', async (sticker) => {
     .setTitle('🖼️ Sticker ajouté')
     .setColor(COLORS.yellow)
     .addFields(
-      { name: '🖼️ Nom',         value: sticker.name, inline: true },
-      { name: '🆔 ID',          value: sticker.id, inline: true },
+      { name: '🖼️ Nom',           value: sticker.name, inline: true },
+      { name: '🆔 ID',           value: sticker.id, inline: true },
       { name: '📋 Description', value: sticker.description || '*Aucune*', inline: true },
     )
     .setTimestamp();
@@ -802,10 +800,10 @@ client.on('inviteCreate', async (invite) => {
     .setTitle('📨 Invitation créée')
     .setColor(COLORS.teal)
     .addFields(
-      { name: '🔗 Lien',        value: invite.url, inline: true },
-      { name: '👤 Créateur',    value: invite.inviter?.tag || '*Inconnu*', inline: true },
+      { name: '🔗 Lien',         value: invite.url, inline: true },
+      { name: '👤 Créateur',     value: invite.inviter?.tag || '*Inconnu*', inline: true },
       { name: '📌 Salon',       value: `${invite.channel}`, inline: true },
-      { name: '⏱️ Expire',      value: invite.maxAge ? `${invite.maxAge}s` : 'Jamais', inline: true },
+      { name: '⏱️ Expire',       value: invite.maxAge ? `${invite.maxAge}s` : 'Jamais', inline: true },
       { name: '🔢 Utilisations', value: invite.maxUses ? `${invite.maxUses}` : 'Illimité', inline: true },
     )
     .setTimestamp();
@@ -898,9 +896,9 @@ client.on('guildScheduledEventCreate', async (event) => {
     .setTitle('📅 Événement créé')
     .setColor(COLORS.teal)
     .addFields(
-      { name: '📌 Nom',         value: event.name, inline: true },
-      { name: '👤 Créateur',    value: event.creator?.tag || '*Inconnu*', inline: true },
-      { name: '📍 Lieu',        value: event.entityMetadata?.location || `${event.channel}` || '*N/A*', inline: true },
+      { name: '📌 Nom',          value: event.name, inline: true },
+      { name: '👤 Créateur',     value: event.creator?.tag || '*Inconnu*', inline: true },
+      { name: '📍 Lieu',         value: event.entityMetadata?.location || `${event.channel}` || '*N/A*', inline: true },
       { name: '🕐 Début',       value: ts(event.scheduledStartAt), inline: true },
       { name: '🕐 Fin',         value: event.scheduledEndAt ? ts(event.scheduledEndAt) : '*Non définie*', inline: true },
     )
@@ -960,7 +958,6 @@ client.on('guildScheduledEventUserRemove', async (event, user) => {
 client.on('userUpdate', async (before, after) => {
   const fields = [];
   if (before.username !== after.username) fields.push({ name: '🏷️ Pseudo global', value: `\`${before.username}\` → \`${after.username}\``, inline: true });
-  if (before.discriminator !== after.discriminator) fields.push({ name: '🔢 Discriminant', value: `\`${before.discriminator}\` → \`${after.discriminator}\``, inline: true });
   if (before.avatar !== after.avatar) fields.push({ name: '🖼️ Avatar', value: '[Changé]', inline: true });
   if (fields.length === 0) return;
   const embed = new EmbedBuilder()
